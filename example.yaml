@@ -1,0 +1,162 @@
+# 注释格式：类型  可选标记  说明；必填项不写"可选"
+
+version: 1 # int  只能为 1
+
+meta: # map  可选  题库元信息
+  title: "高三理综·化学反应与遗传模块" # string  可选  题库名称
+  subject: 理综 # string  可选  学科名，与 cses 的 subjects[].name 一致；单科卷写单科
+  grade: 高三 # string  可选  年级，写中文，如 高一 / 七年级 / 高三
+  authors: # string[]  可选  作者列表，按署名顺序排
+    - 李梅 # string  可选  作者姓名
+    - 王芳 # string  可选  作者姓名
+  updated: "2026-11-21" # string  可选  YYYY-MM-DD，最后修改日期
+
+content: # map  可选  填充与渲染约定，省略取默认值
+  default_source: inline # enum  可选  inline / file，编辑器新建时的默认来源，不参与校验
+  math: auto # enum  可选  latex / auto / none，$...$ 的解析强度，默认 auto；综合卷用 auto
+  chemistry: mhchem # enum  可选  mhchem / none，是否解析 \ce{} 化学式，默认 none
+  answer_input: latex # enum  可选  text / latex，考生作答是否接受 LaTeX，默认 text
+  allow_html: tables # enum  可选  false / tables / all，放行的 HTML 标签，默认 tables
+  asset_dir: "assets" # string  可选  图片与 _ref 的基准目录，默认 assets
+
+category: # list  题型注册表，小题的 category 必须命中此处的 key
+  - key: choose # string  题型标识，全库唯一
+    name: 选择题 # string  显示名
+    auto_grade: true # bool  是否可自动判分
+    fields: [options, answer] # string[]  该题型专属的必填字段
+    answer_type: "int | int[]" # string  answer 的取值形态，供校验器使用
+
+  - key: blank # string  空位在 stem 里用 {{n}} 标记，答案按编号顺序比对
+    name: 填空题
+    auto_grade: true
+    fields: [answer]
+    answer_type: "string | {value, tol, unit}[]"
+
+  - key: short # string  采分点给分，不进自动判分
+    name: 简答题
+    auto_grade: false
+    fields: [answer]
+    answer_type: "string"
+
+  - key: judge # string  陈述句判真假，答案只能是布尔
+    name: 判断题
+    auto_grade: true
+    fields: [answer]
+    answer_type: "bool"
+
+questions: # list  大题列表；一道大题 = 材料 / 引导语 + 若干小题
+  - number: 1 # int  大题题号，>=1，本层唯一
+    points: 13.0 # float  大题分值，0.5 的整数倍，须等于各小题之和
+    ask: "阅读材料，完成下列问题。" # string  可选  引导语，支持行内 Markdown
+    material: | # string  可选  材料，支持块级 Markdown；与 material_ref 二选一
+      质量为 $m=2\,\mathrm{kg}$ 的物块置于倾角 $\theta=30^\circ$ 的粗糙斜面上，物块与斜面间的动摩擦因数 $\mu=\dfrac{\sqrt{3}}{3}$，重力加速度 $g=10\,\mathrm{m/s^2}$。
+
+      ![图1 物块受力示意图](mech/q1-force.svg)
+    # material_ref: "materials/q1.md" # string  可选  材料外链，.md 或 .tex，与 material 二选一
+    tags: [牛顿运动定律, 摩擦力] # string[]  可选  知识点标签，与小题 tags 取并集
+    origin: # map  可选  来源与生成方式，省略视为人工原创
+      type: excerpt # enum  可选  human / ai / adapted / excerpt，默认 human
+      source: "2024 届高三第一次模拟考试·物理" # string  可选  出处自由文本，用于展示
+      ref: # map  可选  type 为 adapted / excerpt 时建议填写
+        number: 0 # int  可选  原题题号，无编号写 0
+        url: "" # string  可选  原题链接
+    items: # list  小题列表，数量由列表长度决定
+      - number: 1 # int  小题题号，>=1，本大题内唯一
+        category: blank # enum  题型，取 category[].key
+        points: 4.0 # float  小题分值，0.5 的整数倍
+        stem: '物块沿斜面向上滑动时，所受滑动摩擦力的大小为 {{1}}，方向 {{2}}。' # string  题干，支持 Markdown 与 {{n}}；与 stem_ref 二选一
+        # stem_ref: "items/q1-1.tex" # string  可选  题干外链，.md 或 .tex，与 stem 二选一
+        answer: # string[] | map[]  按空位编号顺序排列
+          - value: 10 # float  可选  数值答案
+            tol: 0.02 # float  可选  相对容差，0.02 表示 ±2%
+            unit: "N" # string  可选  单位，作答带单位时校验
+          - "沿斜面向下" # string  可选  文本答案，多种写法用 | 分隔；写 "" 表示该空交专家批改
+        explanation: '垂直斜面方向 $N=mg\cos\theta$，故 $f=\mu mg\cos\theta=10\,\mathrm{N}$，方向与相对运动方向相反。' # string  可选  解析，支持 Markdown
+
+      - number: 2 # int  小题题号
+        category: choose
+        points: 4.0
+        stem: '若恒力 $F=25\,\mathrm{N}$，则物块加速度的大小为：' # string  题干
+        options: # string[]  选项，顺序即 A、B、C…，2~8 项
+          - '$0$' # string  选项内容，只允许行内 Markdown，不得换行、不得放表格
+          - '$2.5\,\mathrm{m/s^2}$'
+          - '$5\,\mathrm{m/s^2}$'
+          - '$7.5\,\mathrm{m/s^2}$'
+        answer: 2 # int | int[]  正确项序号，从 1 起；多选写升序列表 [1, 3]
+        explanation: '沿斜面方向 $F-mg\sin\theta-\mu mg\cos\theta=ma$，代入得 $a=2.5\,\mathrm{m/s^2}$。' # string  可选
+
+      - number: 3 # int  小题题号
+        category: short
+        points: 5.0
+        stem: '物块由静止开始运动 $t=2\,\mathrm{s}$，求此时速度的大小，并写出所用的物理规律。' # string  题干，须限定角度与字数
+        answer: |- # string  完整参考答案，Markdown 分点；与 answer_ref 二选一
+          1. 沿斜面方向受拉力 $F$、重力分量 $mg\sin\theta$、滑动摩擦力 $\mu mg\cos\theta$，垂直斜面方向 $N=mg\cos\theta$。
+          2. 由牛顿第二定律 $F-mg\sin\theta-\mu mg\cos\theta=ma$，得 $a=2.5\,\mathrm{m/s^2}$。
+          3. 由 $v=at$ 得 $v=5\,\mathrm{m/s}$。
+        key_points: # list  可选  采分点，各项 score 之和须等于本题 points
+          - point: "正确受力分析并列出牛顿第二定律方程" # string  一句话，须能在 answer 中找到对应
+            score: 2.0 # float  该点分值，0.5 的整数倍
+          - point: '算出加速度 $2.5\,\mathrm{m/s^2}$'
+            score: 1.0
+          - point: '由 $v=at$ 得出 $5\,\mathrm{m/s}$'
+            score: 2.0
+        max_words: 120 # int  可选  作答字数上限，超出不计分
+
+  - number: 2 # int  大题题号
+    points: 4.0 # float  大题分值
+    ask: "" # string  可选  无引导语写 ""，独立单题也保留大题层
+    material: "" # string  可选  无材料写 ""
+    tags: [化学平衡, 平衡常数] # string[]  可选
+    items:
+      - number: 1 # int  小题题号
+        category: blank
+        points: 4.0
+        # 表格是内容不是题型：直接写在 stem 里，单元格中的 {{n}} 渲染为输入框
+        stem: |- # string  题干，支持 Markdown、GFM 表格与 {{n}} 空位
+          某温度下，向 2 L 密闭容器中充入 $\ce{2.0 mol SO2}$ 与 $\ce{1.0 mol O2}$，发生反应 $\ce{2SO2(g) + O2(g) <=> 2SO3(g)}$，$\Delta H<0$。
+
+          | 浓度 / ($\mathrm{mol\cdot L^{-1}}$) | $\ce{SO2}$ | $\ce{O2}$ | $\ce{SO3}$ |
+          | --- | --- | --- | --- |
+          | 起始 | $1.0$ | $0.5$ | $0$ |
+          | 转化 | $0.8$ | {{1}} | $0.8$ |
+          | 平衡 | {{2}} | $0.1$ | $0.8$ |
+
+          该温度下反应的平衡常数 $K=$ {{3}}。
+        answer: # string[] | map[]  跨行时先行后列、先左后右
+          - value: 0.4 # float  可选  数值答案
+            tol: 0.02 # float  可选  相对容差；要卡有效数字就不要用对象，改写成字符串
+          - value: 0.2
+          - value: 160 # float  可选
+            tol: 0.01
+        explanation: '三段式中转化量之比等于化学计量数之比，故 $\ce{O2}$ 转化 $0.4$、$\ce{SO2}$ 平衡 $0.2$；$K=\dfrac{0.8^2}{0.2^2\times0.1}=160$。' # string  可选
+
+  - number: 3 # int  大题题号
+    points: 4.0 # float  大题分值
+    ask: "" # string  可选
+    material: "" # string  可选
+    tags: [基因的自由组合定律, 基因突变] # string[]  可选
+    origin: # map  可选
+      type: ai # enum  AI 生成的题必须写全 model / generated_at / reviewed
+      model: "deepseek-chat" # string  AI 生成时必填，生成模型标识
+      generated_at: "2026-11-21" # string  AI 生成时必填，YYYY-MM-DD
+      reviewed: false # bool  AI 生成时必填，false 的题不进正式练习
+      reviewed_by: "" # string  可选  审校人，reviewed 为 true 时应填
+    items:
+      - number: 1 # int  小题题号
+        category: choose
+        points: 2.0
+        stem: '某二倍体植物的花色由两对独立遗传的基因控制，基因型中同时含 $A$ 和 $B$ 时开红花，其余开白花。基因型为 $AaBb$ 的植株自交，子代中红花的比例为：' # string  题干
+        options:
+          - '$9/16$'
+          - '$5/8$'
+          - '$3/8$'
+          - '$1/4$'
+        answer: 1 # int  正确项序号
+        explanation: '$A\_B\_$ 占 $9/16$，其余 $7/16$ 开白花。' # string  可选
+
+      - number: 2 # int  小题题号
+        category: judge
+        points: 2.0
+        stem: '基因突变一定会导致生物性状改变。' # string  单句陈述，可判真假
+        answer: false # bool  只能 true / false，不得写 对/错、T/F、√/×
+        explanation: '密码子具有简并性，突变也可能落在非编码区；性状还受环境影响。' # string  可选
