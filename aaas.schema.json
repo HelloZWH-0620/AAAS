@@ -1,0 +1,657 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/aaas.schema.json",
+  "title": "AAAS 通用题库格式",
+  "description": "AAAS v1：用于在不同出题、组卷、作答软件之间交换整份题库。字段细节见 HELP.md，可运行示例见 example.yaml。",
+  "type": "object",
+  "required": [
+    "version",
+    "category",
+    "questions"
+  ],
+  "properties": {
+    "version": {
+      "title": "版本号",
+      "type": "integer",
+      "const": 1,
+      "description": "AAAS 的版本号，当前只能为 1。",
+      "examples": [
+        1
+      ]
+    },
+    "meta": {
+      "$ref": "#/definitions/meta"
+    },
+    "content": {
+      "$ref": "#/definitions/content"
+    },
+    "category": {
+      "title": "题型注册表",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/category"
+      },
+      "description": "题型注册表。小题的 category 必须命中此处的某个 key；同一文件内 key 不得重复。"
+    },
+    "questions": {
+      "title": "大题列表",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/question"
+      },
+      "description": "大题列表。一道大题 = 可选的材料 / 引导语 + 一道或若干小题。"
+    }
+  },
+  "definitions": {
+    "meta": {
+      "title": "题库元信息",
+      "description": "可选的题库说明，不参与判分。",
+      "type": "object",
+      "properties": {
+        "title": {
+          "title": "题库名称",
+          "type": "string",
+          "description": "整份题库的显示名。",
+          "examples": [
+            "高三理综·化学反应与遗传模块"
+          ]
+        },
+        "subject": {
+          "title": "学科",
+          "type": "string",
+          "description": "学科名，与 CSES 的 subjects[].name 一致；单科卷写单科，合卷写理综 / 文综。",
+          "examples": [
+            "物理",
+            "理综"
+          ]
+        },
+        "grade": {
+          "title": "年级",
+          "type": "string",
+          "description": "年级，写中文，如 高一 / 七年级 / 高三。",
+          "examples": [
+            "高三",
+            "高一"
+          ]
+        },
+        "authors": {
+          "title": "作者",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "作者列表，按署名顺序排列。",
+          "examples": [
+            [
+              "李梅",
+              "王芳"
+            ]
+          ]
+        },
+        "updated": {
+          "title": "最后修改日期",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "YYYY-MM-DD。必须加引号，否则 YAML 会把它解析成日期对象而不是字符串。",
+          "examples": [
+            "2026-11-21"
+          ]
+        }
+      }
+    },
+    "content": {
+      "title": "填充与渲染约定",
+      "description": "整份题库的默认渲染行为，省略则取默认值。",
+      "type": "object",
+      "properties": {
+        "default_source": {
+          "title": "默认来源",
+          "type": "string",
+          "enum": [
+            "inline",
+            "file"
+          ],
+          "default": "inline",
+          "description": "编辑器新建题目时的默认来源，只影响表单初值，不参与校验；实际来源由每个槽位是否写了 _ref 决定。"
+        },
+        "math": {
+          "title": "公式解析强度",
+          "type": "string",
+          "enum": [
+            "latex",
+            "auto",
+            "none"
+          ],
+          "default": "auto",
+          "description": "latex 强制把 $...$ 当公式；auto 成对才解析；none 全按字面量。语文题干里的 $5 是货币符号，这类卷子用 none。",
+          "examples": [
+            "auto"
+          ]
+        },
+        "chemistry": {
+          "title": "化学式解析",
+          "type": "string",
+          "enum": [
+            "mhchem",
+            "none"
+          ],
+          "default": "none",
+          "description": "mhchem 时解析 \\ce{} 化学式与反应式；none 时不解析。"
+        },
+        "answer_input": {
+          "title": "作答输入",
+          "type": "string",
+          "enum": [
+            "text",
+            "latex"
+          ],
+          "default": "text",
+          "description": "考生作答是否接受 LaTeX 输入。text 时作答侧拒收 .tex 文件。"
+        },
+        "allow_html": {
+          "title": "放行的 HTML",
+          "type": ["boolean", "string"],
+          "enum": [
+            false,
+            "tables",
+            "all"
+          ],
+          "default": "tables",
+          "description": "布尔 false 表示不放行任何 HTML；tables 只放行表格标签（用于合并单元格）；all 放行白名单内全部标签。YAML 里写裸 false，不要加引号。"
+        },
+        "asset_dir": {
+          "title": "资源目录",
+          "type": "string",
+          "default": "assets",
+          "description": "图片与 _ref 外链文件的基准目录，相对本题库文件所在位置。"
+        }
+      }
+    },
+    "category": {
+      "title": "题型注册项",
+      "type": "object",
+      "required": [
+        "key",
+        "name",
+        "auto_grade",
+        "fields",
+        "answer_type"
+      ],
+      "properties": {
+        "key": {
+          "title": "题型标识",
+          "type": "string",
+          "minLength": 1,
+          "description": "题型标识，全库唯一。建议用小写字母、数字与短横线，便于在其他软件里映射。",
+          "examples": [
+            "choose",
+            "blank",
+            "short",
+            "judge"
+          ]
+        },
+        "name": {
+          "title": "显示名",
+          "type": "string",
+          "minLength": 1,
+          "description": "给学生看的中文题型名。",
+          "examples": [
+            "选择题"
+          ]
+        },
+        "auto_grade": {
+          "title": "可自动判分",
+          "type": "boolean",
+          "description": "true 表示答案可以机器比对的题型；false 表示必须按采分点或交专家批改。"
+        },
+        "fields": {
+          "title": "专属必填字段",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "description": "该题型在小题层必须出现的字段名。校验器据此检查，出题软件据此渲染表单。",
+          "examples": [
+            [
+              "options",
+              "answer"
+            ]
+          ]
+        },
+        "answer_type": {
+          "title": "答案形态",
+          "type": "string",
+          "description": "answer 的取值形态说明，供校验器与出题软件使用，如 int | int[]、string | {value, tol, unit}[]。",
+          "examples": [
+            "int | int[]"
+          ]
+        }
+      }
+    },
+    "origin": {
+      "title": "题目来源",
+      "description": "题目的生成方式与出处。省略视为人工原创。",
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "title": "来源类型",
+          "type": "string",
+          "enum": [
+            "human",
+            "ai",
+            "adapted",
+            "excerpt"
+          ],
+          "default": "human",
+          "description": "human 人工原创；ai 模型生成；adapted 改编自原题；excerpt 直接引用原题。"
+        },
+        "source": {
+          "title": "出处",
+          "type": "string",
+          "description": "出处自由文本，用于展示，如 2024 届高三第一次模拟考试·物理。",
+          "examples": [
+            "2024 届高三第一次模拟考试·物理"
+          ]
+        },
+        "ref": {
+          "$ref": "#/definitions/originRef"
+        },
+        "model": {
+          "title": "生成模型",
+          "type": "string",
+          "description": "AI 生成时必填，生成模型的标识。",
+          "examples": [
+            "deepseek-chat"
+          ]
+        },
+        "generated_at": {
+          "title": "生成日期",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "AI 生成时必填，YYYY-MM-DD。",
+          "examples": [
+            "2026-11-21"
+          ]
+        },
+        "reviewed": {
+          "title": "是否已审校",
+          "type": "boolean",
+          "description": "AI 生成时必填。false 的题默认不进正式练习。"
+        },
+        "reviewed_by": {
+          "title": "审校人",
+          "type": "string",
+          "description": "审校人姓名，reviewed 为 true 时应当填写。"
+        }
+      },
+      "if": {
+        "properties": {
+          "type": {
+            "const": "ai"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "required": [
+          "model",
+          "generated_at",
+          "reviewed"
+        ]
+      }
+    },
+    "originRef": {
+      "title": "原题定位",
+      "description": "结构化定位原题，便于回溯与查重。",
+      "type": "object",
+      "properties": {
+        "number": {
+          "title": "原题题号",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "原题题号，无编号写 0。"
+        },
+        "url": {
+          "title": "原题链接",
+          "type": "string",
+          "description": "原题链接，没有就写空串。",
+          "examples": [
+            ""
+          ]
+        }
+      }
+    },
+    "answer": {
+      "title": "答案",
+      "description": "取值形态由题型决定：choose 为整数或整数数组，judge 为布尔，short 为字符串，blank 为字符串或数值对象组成的数组。",
+      "oneOf": [
+        {
+          "title": "判断",
+          "type": "boolean"
+        },
+        {
+          "title": "选择（单选）",
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "title": "简答 / 填空（单空文本）",
+          "type": "string"
+        },
+        {
+          "title": "选择（多选）",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "uniqueItems": true,
+          "description": "正确项序号，升序排列。"
+        },
+        {
+          "title": "填空（多空）",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/definitions/blankAnswer"
+              }
+            ]
+          },
+          "description": "按空位编号顺序排列，个数应与 stem 中 {{n}} 的个数一致。"
+        }
+      ]
+    },
+    "blankAnswer": {
+      "title": "数值答案",
+      "description": "理科填空题的数值形态，按容差判分。要卡有效数字时改用字符串精确匹配。",
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {
+          "title": "标准答案",
+          "type": "number"
+        },
+        "tol": {
+          "title": "相对容差",
+          "type": "number",
+          "minimum": 0,
+          "description": "相对容差，0.02 表示 ±2%。省略表示必须精确相等。"
+        },
+        "unit": {
+          "title": "单位",
+          "type": "string",
+          "description": "作答带单位时参与校验，如 N、m/s^2。"
+        }
+      }
+    },
+    "keyPoint": {
+      "title": "采分点",
+      "type": "object",
+      "required": [
+        "point",
+        "score"
+      ],
+      "properties": {
+        "point": {
+          "title": "采分点描述",
+          "type": "string",
+          "minLength": 1,
+          "description": "一句话，须能在 answer 中找到对应表述。"
+        },
+        "score": {
+          "title": "分值",
+          "type": "number",
+          "minimum": 0,
+          "multipleOf": 0.5,
+          "description": "该采分点的分值，0.5 的整数倍；各项之和须等于小题 points。"
+        }
+      }
+    },
+    "item": {
+      "title": "小题",
+      "type": "object",
+      "required": [
+        "number",
+        "category",
+        "points"
+      ],
+      "properties": {
+        "number": {
+          "title": "小题题号",
+          "type": "integer",
+          "minimum": 1,
+          "description": "本大题内唯一，从 1 起。"
+        },
+        "category": {
+          "title": "题型",
+          "type": "string",
+          "minLength": 1,
+          "description": "必须命中 category[].key。"
+        },
+        "points": {
+          "title": "分值",
+          "type": "number",
+          "minimum": 0,
+          "multipleOf": 0.5,
+          "description": "0.5 的整数倍。同一大题下各小题之和须等于大题 points。"
+        },
+        "stem": {
+          "title": "题干",
+          "type": "string",
+          "description": "支持 Markdown 与 {{n}} 空位。与 stem_ref 二选一，不得同时出现。"
+        },
+        "stem_ref": {
+          "title": "题干外链",
+          "type": "string",
+          "description": "外部 .md 或 .tex 文件的路径，相对 asset_dir。与 stem 二选一。"
+        },
+        "options": {
+          "title": "选项",
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "items": {
+            "type": "string"
+          },
+          "description": "顺序即 A、B、C…；只允许行内 Markdown，不得换行、不得放表格。"
+        },
+        "answer": {
+          "$ref": "#/definitions/answer"
+        },
+        "answer_ref": {
+          "title": "答案外链",
+          "type": "string",
+          "description": "外部 .md 或 .tex 文件的路径。与 answer 二选一。"
+        },
+        "key_points": {
+          "title": "采分点",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/keyPoint"
+          },
+          "description": "简答题的分步给分点；各项 score 之和须等于本题 points。省略则整体评分。"
+        },
+        "max_words": {
+          "title": "字数上限",
+          "type": "integer",
+          "minimum": 1,
+          "description": "作答字数上限，超出不计分。"
+        },
+        "explanation": {
+          "title": "解析",
+          "type": "string",
+          "description": "支持 Markdown。与 explanation_ref 二选一。"
+        },
+        "explanation_ref": {
+          "title": "解析外链",
+          "type": "string",
+          "description": "外部 .md 或 .tex 文件的路径。与 explanation 二选一。"
+        },
+        "tags": {
+          "title": "知识点标签",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "description": "省略则继承大题 tags。"
+        },
+        "origin": {
+          "$ref": "#/definitions/origin"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "stem"
+          ]
+        },
+        {
+          "required": [
+            "stem_ref"
+          ]
+        }
+      ],
+      "allOf": [
+        {
+          "not": {
+            "required": [
+              "stem",
+              "stem_ref"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "explanation",
+              "explanation_ref"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "answer",
+              "answer_ref"
+            ]
+          }
+        },
+        {
+          "anyOf": [
+            {
+              "required": [
+                "answer"
+              ]
+            },
+            {
+              "required": [
+                "answer_ref"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "question": {
+      "title": "大题",
+      "type": "object",
+      "required": [
+        "number",
+        "points",
+        "items"
+      ],
+      "properties": {
+        "number": {
+          "title": "大题题号",
+          "type": "integer",
+          "minimum": 1,
+          "description": "本层唯一，从 1 起。"
+        },
+        "points": {
+          "title": "分值",
+          "type": "number",
+          "minimum": 0,
+          "multipleOf": 0.5,
+          "description": "须等于各小题 points 之和。"
+        },
+        "ask": {
+          "title": "引导语",
+          "type": "string",
+          "description": "支持行内 Markdown。与 ask_ref 二选一；没有就写空串。"
+        },
+        "ask_ref": {
+          "title": "引导语外链",
+          "type": "string",
+          "description": "外部 .md 或 .tex 文件的路径。与 ask 二选一。"
+        },
+        "material": {
+          "title": "材料",
+          "type": "string",
+          "description": "支持块级 Markdown 与 GFM 表格；不得包含 {{n}} 空位。与 material_ref 二选一。"
+        },
+        "material_ref": {
+          "title": "材料外链",
+          "type": "string",
+          "description": "外部 .md 或 .tex 文件的路径。与 material 二选一。"
+        },
+        "tags": {
+          "title": "知识点标签",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "description": "与小题 tags 取并集。"
+        },
+        "origin": {
+          "$ref": "#/definitions/origin"
+        },
+        "items": {
+          "title": "小题列表",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/item"
+          },
+          "description": "小题列表，数量由列表长度决定，不写计数字段。"
+        }
+      },
+      "allOf": [
+        {
+          "not": {
+            "required": [
+              "ask",
+              "ask_ref"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "material",
+              "material_ref"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
