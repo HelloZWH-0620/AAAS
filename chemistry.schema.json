@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/chemistry.schema.json",
+  "title": "chemistry 插件",
+  "description": "化学方程式与结构式配置。题目 plugins 数组中的一项。",
+  "type": "object",
+  "properties": {
+    "name": {
+      "const": "chemistry"
+    },
+    "engine": {
+      "enum": [
+        "mhchem",
+        "none"
+      ],
+      "default": "mhchem"
+    },
+    "macro": {
+      "type": "string",
+      "default": "\\ce",
+      "description": "化学方程式宏"
+    },
+    "structure": {
+      "enum": [
+        "smiles",
+        "svg",
+        "none"
+      ],
+      "default": "none"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

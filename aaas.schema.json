@@ -1,484 +1,179 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/aaas.schema.json",
-  "title": "AAAS 通用题库格式",
-  "description": "AAAS v1：以单道题为基本单元的题库交换格式。字段细节见 HELP.md，可运行示例见 example.yaml。",
+  "title": "AAAS 题库交换格式 v1",
+  "description": "以单道题为基本单元。插件定义见同目录 *.schema.json，由 $ref 引用。字段含义见 HELP.md。",
   "type": "object",
-  "required": [
-    "version",
-    "questions"
-  ],
   "properties": {
-    "version": {
-      "title": "版本号",
-      "type": "integer",
-      "const": 1,
-      "description": "AAAS 的版本号，当前只能为 1。",
-      "examples": [1]
-    },
-    "meta": {
-      "$ref": "#/definitions/meta"
-    },
-    "content": {
-      "$ref": "#/definitions/content"
-    },
+    "version": { "const": 1 },
     "questions": {
-      "title": "题目列表",
       "type": "array",
       "minItems": 1,
-      "items": {
-        "$ref": "#/definitions/question"
-      },
-      "description": "题目列表。每项是一道可独立抽出的题：单题直接写 type / stem / answer；题组用 members 列出成员。"
+      "items": { "$ref": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/aaas.schema.json#/definitions/question" }
     }
   },
+  "required": ["version", "questions"],
+  "additionalProperties": false,
   "definitions": {
-    "meta": {
-      "title": "题库元信息",
-      "description": "可选的题库说明，不参与判分。",
-      "type": "object",
-      "properties": {
-        "title": {
-          "title": "题库名称",
-          "type": "string",
-          "description": "整份题库的显示名。"
-        },
-        "subject": {
-          "title": "学科",
-          "type": "string",
-          "description": "学科名，与 CSES 的 subjects[].name 一致；单科卷写单科，合卷写理综 / 文综。"
-        },
-        "grade": {
-          "title": "年级",
-          "type": "string",
-          "description": "年级，写中文，如 高一 / 七年级 / 高三。"
-        },
-        "authors": {
-          "title": "作者",
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "作者列表，按署名顺序排列。"
-        },
-        "updated": {
-          "title": "最后修改日期",
-          "type": "string",
-          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-          "description": "YYYY-MM-DD。必须加引号，否则 YAML 会把它解析成日期对象。"
-        }
+    "plugins": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "math.schema.json" },
+          { "$ref": "chemistry.schema.json" },
+          { "$ref": "photo.schema.json" },
+          { "$ref": "excel.schema.json" }
+        ]
       }
     },
-    "content": {
-      "title": "填充与渲染约定",
-      "description": "整份题库的默认渲染行为，省略则取默认值。",
+    "numericAnswer": {
       "type": "object",
       "properties": {
-        "default_source": {
-          "title": "默认来源",
-          "type": "string",
-          "enum": ["inline", "file"],
-          "default": "inline",
-          "description": "编辑器新建题目时的默认来源，只影响表单初值；实际来源由每个槽位是否写了 _ref 决定。"
-        },
-        "math": {
-          "title": "公式解析强度",
-          "type": "string",
-          "enum": ["latex", "auto", "none"],
-          "default": "auto",
-          "description": "latex 强制把 $...$ 当公式；auto 成对才解析；none 全按字面量。"
-        },
-        "chemistry": {
-          "title": "化学式解析",
-          "type": "string",
-          "enum": ["mhchem", "none"],
-          "default": "none",
-          "description": "mhchem 时解析 \\ce{} 化学式与反应式；none 时不解析。"
-        },
-        "answer_input": {
-          "title": "作答输入",
-          "type": "string",
-          "enum": ["text", "latex"],
-          "default": "text",
-          "description": "考生作答是否接受 LaTeX 输入。text 时作答侧拒收 .tex 文件。"
-        },
-        "allow_html": {
-          "title": "放行的 HTML",
-          "type": ["boolean", "string"],
-          "enum": [false, "tables", "all"],
-          "default": "tables",
-          "description": "布尔 false 不放行 HTML；tables 只放行表格标签；all 放行白名单内标签。YAML 里写裸 false。"
-        },
-        "asset_dir": {
-          "title": "资源目录",
-          "type": "string",
-          "default": "assets",
-          "description": "图片与 _ref 外链文件的基准目录，相对本题库文件所在位置。"
-        }
-      }
-    },
-    "typeEnum": {
-      "title": "题型",
-      "type": "string",
-      "enum": ["choose", "blank", "short", "judge"],
-      "description": "AAAS v1 支持的四种标准题型，不可自定义。"
-    },
-    "origin": {
-      "title": "题目来源",
-      "description": "题目的生成方式与出处。省略视为人工原创。",
-      "type": "object",
-      "required": ["kind"],
-      "properties": {
-        "kind": {
-          "title": "来源类型",
-          "type": "string",
-          "enum": ["human", "ai", "adapted", "excerpt"],
-          "default": "human",
-          "description": "human 人工原创；ai 模型生成；adapted 改编自原题；excerpt 直接引用原题。"
-        },
-        "description": {
-          "title": "出处描述",
-          "type": "string",
-          "description": "自由文本，用于展示与回溯，如 2024 届高三第一次模拟考试·物理第 18 题。"
-        },
-        "url": {
-          "title": "原题链接",
-          "type": "string",
-          "description": "原题链接，没有就写空串。"
-        },
-        "model": {
-          "title": "生成模型",
-          "type": "string",
-          "description": "AI 生成时必填，生成模型的标识。"
-        },
-        "generated_at": {
-          "title": "生成日期",
-          "type": "string",
-          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-          "description": "AI 生成时必填，YYYY-MM-DD。"
-        },
-        "reviewed": {
-          "title": "是否已审校",
-          "type": "boolean",
-          "description": "AI 生成时必填。false 的题默认不进正式练习。"
-        },
-        "reviewed_by": {
-          "title": "审校人",
-          "type": "string",
-          "description": "审校人姓名，reviewed 为 true 时应当填写。"
-        }
+        "value": { "type": "number" },
+        "tol": { "type": "number", "minimum": 0 },
+        "unit": { "type": "string" }
       },
-      "if": {
-        "properties": { "kind": { "const": "ai" } },
-        "required": ["kind"]
-      },
-      "then": {
-        "required": ["model", "generated_at", "reviewed"]
-      }
-    },
-    "blankAnswer": {
-      "title": "数值答案",
-      "description": "理科填空题的数值形态，按容差判分。要卡有效数字时改用字符串精确匹配。",
-      "type": "object",
       "required": ["value"],
-      "properties": {
-        "value": {
-          "title": "标准答案",
-          "type": "number"
-        },
-        "tol": {
-          "title": "相对容差",
-          "type": "number",
-          "minimum": 0,
-          "description": "相对容差，0.02 表示 ±2%。省略表示必须精确相等。"
-        },
-        "unit": {
-          "title": "单位",
-          "type": "string",
-          "description": "作答带单位时参与校验，如 N、m/s^2。"
-        }
-      }
+      "additionalProperties": false
     },
-    "keyPoint": {
-      "title": "采分点",
-      "type": "object",
-      "required": ["point", "score"],
-      "properties": {
-        "point": {
-          "title": "采分点描述",
-          "type": "string",
-          "minLength": 1,
-          "description": "一句话，须能在 answer 中找到对应表述。"
-        },
-        "score": {
-          "title": "分值",
-          "type": "number",
-          "minimum": 0,
-          "multipleOf": 0.5,
-          "description": "该采分点的分值，0.5 的整数倍；各项之和须等于 points。"
-        }
-      }
-    },
-    "answer": {
-      "title": "答案",
-      "description": "合法答案形态的并集。具体题型允许哪一种由 typedFields 的 if/then 约束决定。",
-      "oneOf": [
-        { "title": "判断", "type": "boolean" },
-        { "title": "选择（单选）", "type": "integer", "minimum": 1 },
-        { "title": "简答 / 填空（单空文本）", "type": "string" },
+    "answerChoose": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "string", "enum": [""] },
+        { "type": "integer", "minimum": 1 },
         {
-          "title": "选择（多选）",
           "type": "array",
-          "minItems": 1,
           "items": { "type": "integer", "minimum": 1 },
           "uniqueItems": true,
-          "description": "正确项序号，升序排列。"
-        },
-        {
-          "title": "填空（多空）",
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "oneOf": [
-              { "type": "string" },
-              { "$ref": "#/definitions/blankAnswer" }
-            ]
-          },
-          "description": "按空位编号顺序排列，个数应与 stem 中 {{n}} 的个数一致。"
+          "minItems": 1
         }
       ]
     },
-    "typedFields": {
-      "title": "题型相关字段",
-      "description": "单题与题组成员共用的字段集合；题型与答案形态的绑定在此处内联，由 draft-07 的 if/then 执行。",
+    "answerBlank": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "string", "enum": [""] },
+        {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              { "type": "string" },
+              { "$ref": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/aaas.schema.json#/definitions/numericAnswer" }
+            ]
+          }
+        }
+      ]
+    },
+    "answerJudge": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "string", "enum": [""] },
+        { "type": "boolean" }
+      ]
+    },
+    "answerShort": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "string" }
+      ]
+    },
+    "regexPoint": {
       "type": "object",
       "properties": {
-        "type": { "$ref": "#/definitions/typeEnum" },
-        "points": {
-          "title": "分值",
-          "type": "number",
-          "minimum": 0,
-          "multipleOf": 0.5,
-          "description": "0.5 的整数倍。题组模式下各成员之和须等于题目层 points。"
-        },
-        "stem": {
-          "title": "题干",
-          "type": "string",
-          "description": "支持 Markdown 与 {{n}} 空位。与 stem_ref 二选一，不得同时出现。"
-        },
-        "stem_ref": {
-          "title": "题干外链",
-          "type": "string",
-          "description": "外部 .md 或 .tex 文件的路径，相对 asset_dir。与 stem 二选一。"
-        },
-        "options": {
-          "title": "选项",
-          "type": "array",
-          "minItems": 2,
-          "maxItems": 8,
-          "items": { "type": "string" },
-          "description": "顺序即 A、B、C…；只允许行内 Markdown。choose 题型必填。"
-        },
-        "answer": { "$ref": "#/definitions/answer" },
-        "answer_ref": {
-          "title": "答案外链",
-          "type": "string",
-          "description": "外部 .md 或 .tex 文件的路径。与 answer 二选一。"
-        },
-        "key_points": {
-          "title": "采分点",
-          "type": "array",
-          "items": { "$ref": "#/definitions/keyPoint" },
-          "description": "简答题的分步给分点；各项 score 之和须等于本题 points。省略则整体评分。"
-        },
-        "max_words": {
-          "title": "字数上限",
-          "type": "integer",
-          "minimum": 1,
-          "description": "作答字数上限，超出不计分。"
-        },
-        "explanation": {
-          "title": "解析",
-          "type": "string",
-          "description": "支持 Markdown。与 explanation_ref 二选一。"
-        },
-        "explanation_ref": {
-          "title": "解析外链",
-          "type": "string",
-          "description": "外部 .md 或 .tex 文件的路径。与 explanation 二选一。"
-        },
-        "tags": {
-          "title": "知识点标签",
-          "type": "array",
-          "items": { "type": "string" },
-          "uniqueItems": true,
-          "description": "成员省略时继承题目层 tags。"
-        },
-        "origin": {
-          "$ref": "#/definitions/origin"
-        }
+        "pattern": { "type": "string" },
+        "point": { "type": "string" },
+        "score": { "type": "number", "multipleOf": 0.5 }
       },
+      "required": ["pattern"],
+      "additionalProperties": false
+    },
+    "detailFields": {
+      "type": "object",
+      "properties": {
+        "type": { "enum": ["choose", "blank", "judge", "short"] },
+        "knowledge": { "anyOf": [ { "type": "null" }, { "type": "array", "items": { "type": "string" } } ] },
+        "points": { "type": "number", "multipleOf": 0.5 },
+        "stem": { "type": "string" },
+        "answer": {},
+        "scoring": { "enum": ["auto", "smart", "manual"] },
+        "regex_points": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "array", "items": { "$ref": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/aaas.schema.json#/definitions/regexPoint" } }
+          ]
+        },
+        "standard_answer": { "type": ["string", "null"] },
+        "rubric": { "type": ["string", "null"] }
+      }
+    },
+    "answerBinding": {
       "allOf": [
         {
-          "not": { "required": ["stem", "stem_ref"] }
+          "if": { "properties": { "type": { "const": "choose" } }, "required": ["type"] },
+          "then": { "properties": { "answer": { "$ref": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/aaas.schema.json#/definitions/answerChoose" } } }
         },
         {
-          "not": { "required": ["answer", "answer_ref"] }
+          "if": { "properties": { "type": { "const": "blank" } }, "required": ["type"] },
+          "then": { "properties": { "answer": { "$ref": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/aaas.schema.json#/definitions/answerBlank" } } }
         },
         {
-          "not": { "required": ["explanation", "explanation_ref"] }
+          "if": { "properties": { "type": { "const": "judge" } }, "required": ["type"] },
+          "then": { "properties": { "answer": { "$ref": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/aaas.schema.json#/definitions/answerJudge" } } }
         },
         {
-          "if": {
-            "properties": { "type": { "const": "choose" } },
-            "required": ["type"]
-          },
-          "then": {
-            "required": ["options"],
-            "properties": {
-              "answer": {
-                "oneOf": [
-                  { "type": "integer", "minimum": 1 },
-                  {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": { "type": "integer", "minimum": 1 },
-                    "uniqueItems": true
-                  }
-                ]
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": { "type": { "const": "blank" } },
-            "required": ["type"]
-          },
-          "then": {
-            "properties": {
-              "answer": {
-                "oneOf": [
-                  { "type": "string" },
-                  {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "oneOf": [
-                        { "type": "string" },
-                        { "$ref": "#/definitions/blankAnswer" }
-                      ]
-                    }
-                  }
-                ]
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": { "type": { "const": "short" } },
-            "required": ["type"]
-          },
-          "then": {
-            "properties": {
-              "answer": { "type": "string" }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": { "type": { "const": "judge" } },
-            "required": ["type"]
-          },
-          "then": {
-            "properties": {
-              "answer": { "type": "boolean" }
-            }
-          }
+          "if": { "properties": { "type": { "const": "short" } }, "required": ["type"] },
+          "then": { "properties": { "answer": { "$ref": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/aaas.schema.json#/definitions/answerShort" } } }
         }
       ]
     },
-    "member": {
-      "title": "题组成员",
-      "description": "一道标准题，不带题号；题号由 members 数组顺序推导。",
+    "item": {
       "allOf": [
-        { "$ref": "#/definitions/typedFields" },
-        { "required": ["type"] },
-        { "anyOf": [{ "required": ["stem"] }, { "required": ["stem_ref"] }] },
-        { "anyOf": [{ "required": ["answer"] }, { "required": ["answer_ref"] }] }
+        { "$ref": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/aaas.schema.json#/definitions/detailFields" },
+        { "$ref": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/aaas.schema.json#/definitions/answerBinding" }
       ]
     },
     "question": {
-      "title": "题目",
-      "description": "单题或题组。单题写 type / stem / answer；题组写 members，题目层只保留共享的题号、材料与来源。",
       "type": "object",
       "properties": {
-        "number": {
-          "title": "卷面题号",
-          "type": "integer",
-          "minimum": 1,
-          "description": "可选。抽出试卷时保留此号；省略则按 questions 数组顺序推导为索引 + 1。"
-        },
-        "ask": {
-          "title": "引导语",
-          "type": "string",
-          "description": "支持行内 Markdown。与 ask_ref 二选一。"
-        },
-        "ask_ref": {
-          "title": "引导语外链",
-          "type": "string",
-          "description": "外部 .md 或 .tex 文件的路径。与 ask 二选一。"
-        },
-        "material": {
-          "title": "材料",
-          "type": "string",
-          "description": "支持块级 Markdown 与 GFM 表格；不得包含 {{n}} 空位。与 material_ref 二选一。"
-        },
-        "material_ref": {
-          "title": "材料外链",
-          "type": "string",
-          "description": "外部 .md 或 .tex 文件的路径。与 material 二选一。"
-        },
-        "members": {
-          "title": "题组成员",
+        "subject": { "type": "string" },
+        "authors": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "date": { "type": "string", "pattern": "^\\d{4}\\.\\d{2}\\.\\d{2}$" },
+        "revision": { "type": "integer", "minimum": 10 },
+        "points": { "type": "number", "multipleOf": 0.5 },
+        "instruction": { "type": "string" },
+        "source": { "type": "string" },
+        "plugins": { "anyOf": [ { "type": "null" }, { "$ref": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/aaas.schema.json#/definitions/plugins" } ] },
+        "number": { "type": "integer", "minimum": 1 },
+        "items": {
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "#/definitions/member" },
-          "description": "题组模式。出现后题目层不得再写 type / stem / answer 等单题字段。"
-        }
-      },
-      "allOf": [
-        { "$ref": "#/definitions/typedFields" },
-        { "not": { "required": ["ask", "ask_ref"] } },
-        { "not": { "required": ["material", "material_ref"] } },
-        {
-          "if": { "required": ["members"] },
-          "then": {
-            "not": {
-              "anyOf": [
-                { "required": ["type"] },
-                { "required": ["stem"] },
-                { "required": ["stem_ref"] },
-                { "required": ["answer"] },
-                { "required": ["answer_ref"] },
-                { "required": ["options"] },
-                { "required": ["key_points"] },
-                { "required": ["explanation"] },
-                { "required": ["explanation_ref"] }
-              ]
-            }
-          }
+          "items": { "$ref": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/aaas.schema.json#/definitions/item" }
         },
+        "type": { "enum": ["choose", "blank", "judge", "short"] },
+        "knowledge": { "anyOf": [ { "type": "null" }, { "type": "array", "items": { "type": "string" } } ] },
+        "stem": { "type": "string" },
+        "answer": {},
+        "scoring": { "enum": ["auto", "smart", "manual"] },
+        "regex_points": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "array", "items": { "$ref": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/aaas.schema.json#/definitions/regexPoint" } }
+          ]
+        },
+        "standard_answer": { "type": ["string", "null"] },
+        "rubric": { "type": ["string", "null"] }
+      },
+      "required": ["subject", "authors", "date", "revision", "points", "instruction", "source"],
+      "allOf": [
+        { "$ref": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/aaas.schema.json#/definitions/answerBinding" },
         {
-          "if": { "not": { "required": ["members"] } },
+          "if": { "required": ["items"] },
           "then": {
-            "required": ["type"],
-            "allOf": [
-              { "anyOf": [{ "required": ["stem"] }, { "required": ["stem_ref"] }] },
-              { "anyOf": [{ "required": ["answer"] }, { "required": ["answer_ref"] }] }
-            ]
+            "not": { "anyOf": [{ "required": ["type"] }, { "required": ["stem"] }] }
           }
         }
-      ]
+      ],
+      "additionalProperties": false
     }
   }
 }

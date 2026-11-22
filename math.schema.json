@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/math.schema.json",
+  "title": "math 插件",
+  "description": "数学公式渲染配置。题目 plugins 数组中的一项。",
+  "type": "object",
+  "properties": {
+    "name": {
+      "const": "math"
+    },
+    "engine": {
+      "enum": [
+        "katex",
+        "mathjax"
+      ],
+      "default": "katex"
+    },
+    "inline": {
+      "type": "string",
+      "default": "$",
+      "description": "行内公式定界符"
+    },
+    "block": {
+      "type": "string",
+      "default": "$$",
+      "description": "块级公式定界符"
+    },
+    "packages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

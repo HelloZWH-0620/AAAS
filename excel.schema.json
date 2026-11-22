@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/excel.schema.json",
+  "title": "excel 插件",
+  "description": "表格数据配置。题目 plugins 数组中的一项。",
+  "type": "object",
+  "properties": {
+    "name": {
+      "const": "excel"
+    },
+    "engine": {
+      "enum": [
+        "gfm",
+        "html"
+      ],
+      "default": "gfm"
+    },
+    "max_rows": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 30
+    },
+    "max_cols": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 12
+    },
+    "allow_merge": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

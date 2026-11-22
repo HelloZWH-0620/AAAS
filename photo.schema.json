@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/HelloZWH-0620/AAAS/main/photo.schema.json",
+  "title": "photo 插件",
+  "description": "插图与照片配置，含 png 上传。题目 plugins 数组中的一项。",
+  "type": "object",
+  "properties": {
+    "name": {
+      "const": "photo"
+    },
+    "format": {
+      "enum": [
+        "svg",
+        "webp",
+        "png",
+        "jpeg"
+      ],
+      "default": "svg"
+    },
+    "min_dpi": {
+      "type": "integer",
+      "minimum": 150,
+      "default": 300
+    },
+    "allow_upload": {
+      "type": "boolean",
+      "default": true,
+      "description": "是否允许考生上传 png 作答"
+    },
+    "max_upload_mb": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "default": 10
+    },
+    "require_alt": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}
