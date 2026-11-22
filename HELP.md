@@ -1,6 +1,6 @@
 # AAAS 题库文件编写指南
 
-**摘要** 本文规定 AAAS v1 题库交换文件的组成、字段取值与内容表达方式，并给出从空文件到可发布试卷的编写流程。文件采用 UTF-8 编码的 YAML，由版本号、元信息、渲染约定、题型注册表和大题列表构成；大题包含材料层，小题包含内容层与评分层。文中列出机器可执行的校验项与人工自检项，并附字段表、题型表、表达式对照表及最小文件骨架。
+**摘要** 本文规定 AAAS v1 题库交换文件的组成、字段取值与内容表达方式，并给出从空文件到可发布题目的编写流程。文件采用 UTF-8 编码的 YAML，由版本号、可选的元信息与渲染约定、题目列表构成；每道题自包含，可独立抽出并保留卷面题号，也可选用题组包装共享材料。文中给出四种标准题型的答案文法与性质、字段表、机器校验项与人工自检项，并附最小文件骨架。
 
 **关键词** 题库交换格式；YAML；Markdown；LaTeX；JSON Schema
 
@@ -8,11 +8,11 @@
 
 ## 1 引言
 
-AAAS（题库交换格式，版本 1）用于在出题、组卷与作答软件之间传递整份试卷。一个文件对应一份试卷，包含题型注册表、材料与题干、答案、采分点和来源标注。
+AAAS（题库交换格式，版本 1）用于在出题、组卷与作答软件之间传递题目。一个文件可含一道或多道题，每道题自包含题型、题干、答案、采分点与来源标注，抽出后不依赖其他题目即可使用。
 
-本指南面向需要独立编写 AAAS 文件的人员。第 3 节给出文件骨架，第 4 节定义各层字段，第 5 节说明内容表达，第 6 至 7 节规定题型与来源，第 8 节给出编写步骤，第 9 节给出校验方法。按上述顺序操作即可写出一份可被软件读取的文件。
+本指南面向需要独立编写 AAAS 文件的人员。第 3 节给出文件骨架，第 4 节定义各层字段，第 5 节说明内容表达，第 6 至 7 节规定题型、答案文法与来源，第 8 节给出编写步骤，第 9 节给出校验方法。配套文件：`example.yaml`（完整示例）、`aaas.schema.json`（机器校验）、`README.md`（项目概览）。
 
-本指南规定文件格式，不规定渲染器的视觉实现。文中「须」表示规范性要求，「宜」表示推荐做法。配套文件：`example.yaml`（完整示例）、`aaas.schema.json`（机器校验）、`README.md`（项目概览）。
+本指南规定文件格式，不规定渲染器的视觉实现。文中「须」表示规范性要求，「宜」表示推荐做法。
 
 ## 2 术语与记号
 
@@ -20,8 +20,8 @@ AAAS（题库交换格式，版本 1）用于在出题、组卷与作答软件�
 
 | 记号 | 含义 |
 | --- | --- |
-| `int` | 整数 |
-| `float` | 浮点数 |
+| `int` | 整数值，用于题号与选项序号 |
+| `number` | 数值，用于分值、容差与标准答案；允许整数写法 |
 | `string` | 字符串 |
 | `bool` | 布尔值，取 `true` 或 `false` |
 | `enum` | 枚举，只能取表内列出的值 |
@@ -36,9 +36,10 @@ AAAS（题库交换格式，版本 1）用于在出题、组卷与作答软件�
 | 对象 | 约束 |
 | --- | --- |
 | 版本号 | `version` 恒为 `1` |
-| 题号 | 大题题号在本层唯一，小题题号在所属大题内唯一；均从 1 起 |
+| 题号 | `number` 可选；省略时按 `questions` 数组顺序推导为索引 + 1；写出时保留原值，供抽出后沿用 |
+| 题型 | 固定为 `choose` / `blank` / `short` / `judge` 四种，不设自定义题型 |
 | 分值 | 所有 `points` 与 `key_points[].score` 均为 0.5 的整数倍 |
-| 计数 | 小题数、选项数、空位数由列表或标记的长度推导，不设计数字段 |
+| 计数 | 选项数、空位数由内容长度推导，不设计数字段 |
 | 日期 | `YYYY-MM-DD`，以字符串形式书写，须加引号 |
 | 编码 | UTF-8，无 BOM |
 
@@ -49,18 +50,21 @@ AAAS 文件（一个 YAML 文档）
 ├── version                    版本号
 ├── meta                       题库元信息（可选）
 ├── content                    填充与渲染约定（可选）
-├── category[]                 题型注册表，先于引用声明
-└── questions[]                大题列表
-    ├── number / points        题号 / 分值
-    ├── ask / material         引导语 / 材料（材料层）
-    ├── tags / origin          知识点 / 来源
-    └── items[]                小题列表
-        ├── stem / options     题干 / 选项（内容层）
-        ├── answer             答案
-        └── points / key_points / max_words    评分层
+└── questions[]                题目列表，至少一项
+    ├── number / points        卷面题号 / 分值（均可选）
+    ├── ask / material         引导语 / 材料（共享层）
+    ├── tags / origin          知识点 / 来源（共享层）
+    ├── 单题形态：type / stem / answer / options / key_points
+    └── 题组形态：members[]
+        └── 成员：type / points / stem / answer / options / key_points
 ```
 
-`category` 是注册表，`questions[].items[].category` 引用其中的 `key`。引用须命中，未登记的题型不得使用。材料层由同一大题下各小题共用；内容层和评分层属于单个小题。
+题目有两种互斥形态：
+
+1. **单题**：题目层直接写 `type`、`stem`、`answer`，其余字段按题型补充。
+2. **题组**：题目层写 `members`，由若干成员组成，材料与来源写在题目层共享。出现 `members` 后，题目层不得再写 `type`、`stem`、`answer` 等单题字段。
+
+题组成员不写题号，序号由 `members` 数组顺序推导。成员题号仅在整卷语境中有意义，由组卷软件按题目层 `number` 与成员位置合成。
 
 ## 4 字段定义
 
@@ -73,8 +77,7 @@ AAAS 文件（一个 YAML 文档）
 | `version` | int | 是 | 固定 `1` |
 | `meta` | map | 否 | 题库元信息，见表 4 |
 | `content` | map | 否 | 渲染约定，见表 5 |
-| `category` | list | 是 | 题型注册表，至少一项，见表 6 |
-| `questions` | list | 是 | 大题列表，至少一项，见表 7 |
+| `questions` | list | 是 | 题目列表，至少一项，见表 7 |
 
 ### 4.2 元信息（meta）
 
@@ -101,58 +104,62 @@ AAAS 文件（一个 YAML 文档）
 | `allow_html` | bool 或 enum | 否 | `tables` | 裸 `false` 不放行；`tables` 仅放行表格标签；`all` 放行白名单内标签 |
 | `asset_dir` | string | 否 | `assets` | 图片与外链文件的基准目录，相对本文件所在位置 |
 
-### 4.4 题型注册表（category）
+### 4.4 题型（type）
 
-**表 6　`category[]` 字段**
+**表 6　`type` 取值**
 
-| 字段 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| `key` | string | 是 | 题型标识，全库唯一；宜用小写字母、数字与短横线 |
-| `name` | string | 是 | 显示名 |
-| `auto_grade` | bool | 是 | 是否可机器判分 |
-| `fields` | string[] | 是 | 该题型在小题层必须出现的字段名 |
-| `answer_type` | string | 是 | `answer` 的取值形态说明，供校验器读取 |
+| `type` | 名称 | 必填字段 | 答案类型 | 判分方式 |
+| --- | --- | --- | --- | --- |
+| `choose` | 选择题 | `options`、`answer` | `index` 或 `index_list` | 按选项序号比对 |
+| `blank` | 填空题 | `answer` | `text` 或 `blank_list` | 文本归一化或数值容差 |
+| `short` | 简答题 | `answer` | `text` | 采分点或专家评阅 |
+| `judge` | 判断题 | `answer` | `bool` | 布尔值比对 |
 
-`fields` 与 `answer_type` 是给程序使用的元数据。新增题型须在本表登记，再在小题中引用其 `key`。
+题型为封闭枚举。第 6 节给出各答案类型的文法与性质。题目层与题组成员层均使用本表的 `type`，字段名相同。
 
-### 4.5 大题（questions）
+### 4.5 题目（questions）
 
 **表 7　`questions[]` 字段**
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `number` | int | 是 | 大题题号，≥1，本层唯一 |
-| `points` | float | 是 | 大题分值，等于各小题 `points` 之和 |
+| `number` | int | 否 | 卷面题号，≥1；抽出试卷时保留，省略时按数组顺序推导 |
+| `points` | number | 否 | 分值，0.5 的整数倍；题组模式下等于各成员 `points` 之和 |
+| `type` | enum | 单题必填 | 见表 6；题组模式下不得出现 |
 | `ask` | string | 否 | 引导语，行内 Markdown；与 `ask_ref` 二选一 |
 | `ask_ref` | string | 否 | 引导语外链；与 `ask` 二选一 |
 | `material` | string | 否 | 材料，块级 Markdown；与 `material_ref` 二选一 |
 | `material_ref` | string | 否 | 材料外链；与 `material` 二选一 |
-| `tags` | string[] | 否 | 知识点标签，与小题 `tags` 取并集 |
-| `origin` | map | 否 | 来源，见表 9 |
-| `items` | list | 是 | 小题列表，至少一项，见表 8 |
-
-无材料时 `ask` 与 `material` 写空串，保留大题层。
-
-### 4.6 小题（items）
-
-**表 8　`items[]` 字段**
-
-| 字段 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| `number` | int | 是 | 小题题号，≥1，本大题内唯一 |
-| `category` | string | 是 | 命中 `category[].key` |
-| `points` | float | 是 | 小题分值，0.5 的整数倍 |
-| `stem` | string | 条件必填 | 题干；与 `stem_ref` 二选一，必居其一 |
-| `stem_ref` | string | 条件必填 | 题干外链；与 `stem` 二选一，必居其一 |
-| `answer` | 依题型 | 条件必填 | 见表 13；与 `answer_ref` 二选一，必居其一 |
-| `answer_ref` | string | 条件必填 | 答案外链；与 `answer` 二选一 |
+| `stem` / `stem_ref` | string | 单题条件必填 | 题干，二者必居其一，不得并存 |
+| `answer` / `answer_ref` | 依题型 / string | 单题条件必填 | 答案，二者必居其一，不得并存 |
 | `options` | string[] | `choose` 必填 | 2 至 8 项，顺序对应 A、B、C…；仅行内 Markdown |
 | `key_points` | list | 否 | 采分点列表，每项为 `{point, score}`，见 6.3 节 |
 | `max_words` | int | 否 | 作答字数上限 |
-| `explanation` | string | 否 | 解析；与 `explanation_ref` 二选一 |
-| `explanation_ref` | string | 否 | 解析外链；与 `explanation` 二选一 |
-| `tags` | string[] | 否 | 省略时继承大题 `tags` |
-| `origin` | map | 否 | 省略时继承大题 `origin` |
+| `explanation` / `explanation_ref` | string | 否 | 解析，二者不得并存 |
+| `tags` | string[] | 否 | 知识点标签，题组成员省略时继承本题取值 |
+| `origin` | map | 否 | 来源，见表 9 |
+| `members` | list | 题组必填 | 题组成员列表，至少一项，见表 8 |
+
+`members` 与 `type` / `stem` / `stem_ref` / `answer` / `answer_ref` / `options` / `key_points` / `explanation` / `explanation_ref` 互斥。无材料时 `ask` 与 `material` 可省略。
+
+### 4.6 题组成员（members）
+
+**表 8　`members[]` 字段**
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `type` | enum | 是 | 见表 6 |
+| `points` | number | 否 | 分值，0.5 的整数倍 |
+| `stem` / `stem_ref` | string | 条件必填 | 题干，二者必居其一，不得并存 |
+| `answer` / `answer_ref` | 依题型 / string | 条件必填 | 答案，二者必居其一，不得并存 |
+| `options` | string[] | `choose` 必填 | 2 至 8 项 |
+| `key_points` | list | 否 | 采分点列表 |
+| `max_words` | int | 否 | 作答字数上限 |
+| `explanation` / `explanation_ref` | string | 否 | 解析，二者不得并存 |
+| `tags` | string[] | 否 | 省略时继承题目层 `tags` |
+| `origin` | map | 否 | 省略时继承题目层 `origin` |
+
+成员不设 `number`。材料写在题目层，由全部成员共享；`{{n}}` 空位不得写入材料。
 
 ### 4.7 来源（origin）
 
@@ -160,13 +167,15 @@ AAAS 文件（一个 YAML 文档）
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `type` | enum | 是 | `human` / `ai` / `adapted` / `excerpt` |
-| `source` | string | 否 | 出处自由文本，用于展示 |
-| `ref` | map | 否 | `{number, url}`；`number` 为原题题号，无编号写 0；`url` 可为空串 |
+| `kind` | enum | 是 | `human` / `ai` / `adapted` / `excerpt` |
+| `description` | string | 否 | 出处描述，自由文本，含原题题号时写入此处 |
+| `url` | string | 否 | 原题链接，没有可写空串 |
 | `model` | string | `ai` 必填 | 生成模型标识 |
 | `generated_at` | string | `ai` 必填 | 生成日期，`YYYY-MM-DD` |
 | `reviewed` | bool | `ai` 必填 | 是否经人工审校；`false` 的题不进入正式练习 |
 | `reviewed_by` | string | 否 | 审校人；`reviewed` 为 `true` 时应填写 |
+
+`kind` 省略整块 `origin` 时视为 `human`。`adapted` 与 `excerpt` 宜填写 `description` 与 `url`。
 
 ## 5 内容表达
 
@@ -184,7 +193,7 @@ AAAS 文件（一个 YAML 文档）
 
 规则：
 
-1. 每个槽位独立选择来源。同一小题可同时出现外链材料与内联题干。
+1. 每个槽位独立选择来源。同一题可同时出现外链材料与内联题干。
 2. 本体与 `_ref` 不得同时出现；两者都不写时该槽位视为缺失。
 3. 外链路径相对 `content.asset_dir`。
 4. `.tex` 不解析 Markdown，不宜承载大段中文；中文正文用 `.md`。
@@ -230,7 +239,7 @@ stem: |-
 2. 空位按先行后列、先左后右编号，跨行继续递增。
 3. 各行列数须相同，表头列数与数据行一致。
 4. 一格宜只放一个空位，空位不跨单元格。
-5. `{{n}}` 只出现在 `stem` 或 `stem_ref` 指向的内容中。`material` 由多个小题共用，其中的空位无法归属，故不得写空位。
+5. `{{n}}` 只出现在 `stem` 或 `stem_ref` 指向的内容中。`material` 由题组各成员共用，其中的空位无法归属，故不得写空位。
 6. GFM 不支持合并单元格；需要时使用 `allow_html: tables` 放行 HTML 表格，或将表格转为图片。
 
 ### 5.4 图片
@@ -249,64 +258,62 @@ stem: |-
 
 ## 6 题型与判分
 
-### 6.1 推荐注册项
+### 6.1 答案文法
 
-`category` 为注册表，以下四项为推荐配置。新增题型须登记 `key`、`fields` 与 `answer_type`。
+答案形态用下列产生式定义。`Number` 为 JSON 数值，`String` 为 Unicode 字符串，`Int` 为整数值。
 
-**表 12　推荐题型**
+```
+Answer     ::= Boolean | Index | IndexList | Text | Numeric | BlankList
+Boolean    ::= "true" | "false"
+Index      ::= n ∈ Int, 1 ≤ n ≤ |options|
+IndexList  ::= "[" Index ("," Index)* "]"      且严格升序、无重复
+Text       ::= String                           多种可接受写法以 "|" 分隔
+Numeric    ::= {"value": Number, ["tol": Number≥0], ["unit": String]}
+BlankList  ::= "[" (Text | Numeric)+ "]"        长度 = stem 中 {{n}} 的个数
+```
 
-| `key` | `name` | `auto_grade` | `fields` | 判分方式 |
-| --- | --- | --- | --- | --- |
-| `choose` | 选择题 | `true` | `[options, answer]` | 按选项序号比对 |
-| `blank` | 填空题 | `true` | `[answer]` | 文本归一化或数值容差 |
-| `short` | 简答题 | `false` | `[answer]` | 采分点或专家评阅 |
-| `judge` | 判断题 | `true` | `[answer]` | 布尔值比对 |
+`choose` 的 `Index` 与 `IndexList` 受 `options` 长度约束；`uniqueItems` 禁止重复序号。`Numeric.tol` 为相对容差，`0.02` 表示 ±2%，省略表示精确相等。
 
-### 6.2 答案形态
+### 6.2 答案类型性质
 
-**表 13　各题型 `answer` 取值**
+**表 12　答案类型性质**
 
-| 题型 | 类型 | 示例 |
-| --- | --- | --- |
-| `choose` | int 或 int[] | `2`；`[1, 3]`（升序） |
-| `blank` | string 或 map[] | `"10"`；`{value: 10, tol: 0.02, unit: N}` |
-| `short` | string | 分点书写的参考答案，不使用「略」 |
-| `judge` | bool | `true` / `false` |
+| 类型 | 载体 | 有序 | 唯一 | 绑定题型 | 判分算法 |
+| --- | --- | --- | --- | --- | --- |
+| `bool` | 标量 | — | — | `judge` | 字面相等 |
+| `index` | 标量 | — | — | `choose` 单选 | 数值相等 |
+| `index_list` | 数组 | 是 | 是 | `choose` 多选 | 集合相等 |
+| `text` | 标量 | — | — | `short`、`blank` 单空 | 归一化后匹配 |
+| `numeric` | 对象 | — | — | `blank` 数值空 | 绝对误差 ≤ `tol × value` |
+| `blank_list` | 数组 | 是 | 否 | `blank` 多空 | 按 `{{n}}` 逐空判分 |
 
-判断题的答案不得写作 `"true"`、`"对"`、`T`、`√` 等形式。选择题序号从 1 起，须在 `1..len(options)` 范围内且不重复。
+`index` 与 `index_list` 为离散索引，须写整数值。JSON Schema draft-07 的 `integer` 允许 `1.0` 这类零小数写法，编写时仍应写 `1`。数值容差不区分有效数字；需要限定 `0.40` 与 `0.4` 时改用 `text` 精确匹配。
+
+判断题答案不得写作 `"true"`、`"对"`、`T`、`√` 等形式。上述绑定由 `aaas.schema.json` 内联的 `if/then` 执行，形态错配在编辑器中即可报错。
 
 ### 6.3 采分点与容差
 
 1. `key_points` 每项含 `point`（一句话描述）与 `score`（0.5 的整数倍）。
 2. 各项 `score` 之和等于该小题 `points`。缺省 `key_points` 时按整体评分。
-3. 数值答案对象含 `value`（标准答案）、`tol`（相对容差，如 `0.02` 表示 ±2%）与 `unit`（单位）。
+3. 数值答案对象含 `value`（标准答案）、`tol`（相对容差）与 `unit`（单位）。
 4. 需要限定有效数字时改用字符串精确匹配，容差判分不区分 `0.40` 与 `0.4`。
 
 ## 7 来源标注
 
-`origin` 可写在题库下的任一题层，省略视为人工原创。小题未写时继承大题的取值。
+`origin` 可写在题目层或题组成员层，省略视为 `human`。成员未写时继承题目层取值。
 
-**表 14　`origin.type` 取值**
-
-| `type` | 含义 | 附加要求 |
-| --- | --- | --- |
-| `human` | 人工原创 | 无 |
-| `ai` | 模型生成 | 须写全 `model`、`generated_at`、`reviewed` |
-| `adapted` | 改编自原题 | 宜填写 `source` 与 `ref` |
-| `excerpt` | 引用原题 | 宜填写 `source` 与 `ref` |
-
-来源信息使用结构化字段而非标签，以便按来源过滤，并将 `ai`、`adapted`、`excerpt` 渲染为对应角标。
+`kind` 的四种取值见表 9。`ai` 须写全 `model`、`generated_at`、`reviewed`；`reviewed: false` 的题不进入正式练习。来源信息使用结构化字段而非标签，以便按来源过滤，并将 `ai`、`adapted`、`excerpt` 渲染为对应角标。
 
 ## 8 编写流程
 
 1. 新建 UTF-8 编码的 `xxx.yaml`，写入 `version: 1`。
 2. 填写 `meta`，其中 `subject` 与 CSES 的学科名保持一致。
 3. 填写 `content`，按学科设定 `math`、`chemistry` 与 `answer_input`。
-4. 在 `category` 登记题型；常规试卷可直接采用表 12 的四项。
-5. 逐题建立 `questions[]` 条目，填写 `number`、`points`，以及 `ask`、`material`。
-6. 逐条建立 `items[]`，填写 `number`、`category`、`points`、`stem`、`answer`；选择题补 `options`。
+4. 确定题目形态：单题直接写 `type`；多题共享材料时写 `members`。
+5. 逐题建立 `questions[]` 条目，按需写 `number`、`points`、`ask`、`material`。
+6. 填写 `type`、`stem`、`answer`；选择题补 `options`，简答题填 `key_points`。
 7. 按 5.1 确定每个槽位的来源，需要外链时改用对应的 `_ref` 字段。
-8. 填空题核对 `{{n}}` 编号与 `answer` 顺序；简答题填写 `key_points`；理科填空题设定 `tol` 与 `unit`。
+8. 填空题核对 `{{n}}` 编号与 `answer` 顺序；理科填空题设定 `tol` 与 `unit`。
 9. 需要标注来源时填写 `origin`，AI 生成题补齐三个必填字段。
 10. 按第 9 节执行校验，确认通过后发布。
 
@@ -316,7 +323,7 @@ stem: |-
 
 ### 9.1 机器校验
 
-`aaas.schema.json` 依据 JSON Schema draft-07 编写，可检查：必填字段、枚举取值、`version` 取值、`_ref` 与本体互斥、题干与答案是否存在、选项数量、分值是否为 0.5 的倍数、AI 题的三个必填字段、数值答案是否含 `value`。
+`aaas.schema.json` 依据 JSON Schema draft-07 编写，可检查：必填字段、枚举取值、`version` 取值、`_ref` 与本体互斥、题干与答案是否存在、单题与题组形态互斥、选项数量、分值是否为 0.5 的倍数、题型与答案形态是否匹配、AI 题的三个必填字段、数值答案是否含 `value`。
 
 编辑器配置：在文件首行加入
 
@@ -331,34 +338,37 @@ pip install check-jsonschema
 check-jsonschema --schemafile aaas.schema.json example.yaml
 ```
 
-`answer` 的具体形态由注册表 `answer_type` 决定，而注册表属于数据，Schema 无法把题型与答案形态绑定。Schema 只校验答案是否为合法形态之一；题型对应的形态校验列入表 15。
+JSON Schema 不检查跨元素的取值关系。题号唯一性、分值求和、空位个数、选项序号范围等依赖题目内容，列入表 13。
 
 ### 9.2 人工与程序自检项
 
-**表 15　发布前检查项**
+**表 13　发布前检查项**
 
-| 编号 | 检查内容 |
-| --- | --- |
-| C1 | `version` 为 `1`；`category`、`questions` 存在 |
-| C2 | 小题 `category` 命中注册表；`fields` 所列字段齐全 |
-| C3 | 大题 `points` 等于各小题 `points` 之和 |
-| C4 | `key_points[].score` 之和等于该小题 `points` |
-| C5 | `{{n}}` 从 1 连续、无重复，个数等于 `answer` 长度 |
-| C6 | `{{n}}` 不出现在材料、引导语、解析与答案中 |
-| C7 | `choose` 的 `answer` 在 `1..len(options)` 内且不重复；`judge` 的 `answer` 为布尔 |
-| C8 | 本体与 `_ref` 不同时出现；`options`、`key_points` 无 `_ref` |
-| C9 | 表格各行列数一致；含 `{{n}}` 的表格位于 `stem` |
-| C10 | 外链与图片路径存在、不越出 `asset_dir`、文件为 UTF-8 |
+| 编号 | 检查内容 | 执行方 |
+| --- | --- | --- |
+| C1 | `version` 为 `1`；`questions` 存在且非空 | Schema |
+| C2 | `type` 取值合法；`choose` 有 `options`，其余题型无多余字段 | Schema |
+| C3 | 本体与 `_ref` 不同时出现；`options`、`key_points` 无 `_ref` | Schema |
+| C4 | 题型与答案形态匹配；`judge` 的 `answer` 为布尔 | Schema |
+| C5 | 分值为 0.5 的整数倍；AI 题三个必填字段齐全 | Schema |
+| C6 | `number` 在同一层级内不重复 | 校验器 |
+| C7 | 题组 `points` 等于各成员 `points` 之和 | 校验器 |
+| C8 | `key_points[].score` 之和等于所属题 `points` | 校验器 |
+| C9 | `{{n}}` 从 1 连续、无重复，个数等于 `answer` 长度 | 校验器 |
+| C10 | `{{n}}` 不出现在材料、引导语、解析与答案中 | 校验器 |
+| C11 | `choose` 的 `answer` 在 `1..len(options)` 内 | 校验器 |
+| C12 | 表格各行列数一致；含 `{{n}}` 的表格位于 `stem` | 校验器 |
+| C13 | 外链与图片路径存在、不越出 `asset_dir`、文件为 UTF-8 | 校验器 |
 
-C1 至 C9 属于发布阻断项。C10 在草稿态记为警告，发布态记为错误。
+C1 至 C12 属于发布阻断项。C13 在草稿态记为警告，发布态记为错误。
 
 ## 10 作答数据
 
-作答数据与题库共用三个内容来源：直接输入、上传 `.md`、上传 `.tex`。作答内容写入题库既有的槽位，由题号与空位编号定位，不替换题库中的题干或材料。
+作答数据与题库共用三个内容来源：直接输入、上传 `.md`、上传 `.tex`。作答内容写入题库既有的槽位，由题目 `number`、成员序号与 `{{n}}` 定位，不替换题库中的题干或材料。
 
 | 约束 | 内容 |
 | --- | --- |
-| 槽位固定 | 仅填写 `questions[].number`、`items[].number` 与 `{{n}}` 指定的位置 |
+| 槽位固定 | 仅填写题目 `number`（或推导序号）、成员序号与 `{{n}}` 指定的位置 |
 | 格式限制 | `content.answer_input` 为 `text` 时拒收 `.tex`；为 `latex` 时三种来源均可 |
 | 判分方式 | `choose`、`judge` 比对答案；`blank` 按文本归一化或数值容差；`short` 按采分点或专家评阅 |
 
@@ -367,7 +377,7 @@ C1 至 C9 属于发布阻断项。C10 在草稿态记为警告，发布态记为
 ```yaml
 version: 1
 meta:
-  title: "示例试卷"
+  title: "示例题库"
   subject: 物理
   grade: 高三
   authors: [示例作者]
@@ -376,22 +386,31 @@ content:
   math: auto
   chemistry: none
   answer_input: text
-category:
-  - key: judge
-    name: 判断题
-    auto_grade: true
-    fields: [answer]
-    answer_type: bool
 questions:
   - number: 1
     points: 2.0
-    ask: ""
-    material: ""
-    items:
-      - number: 1
-        category: judge
+    type: judge
+    stem: '滑动摩擦力的大小一定等于 $\mu mg$。'
+    answer: false
+```
+
+题组写法：
+
+```yaml
+version: 1
+questions:
+  - number: 2
+    points: 4.0
+    material: '阅读材料。'
+    members:
+      - type: choose
         points: 2.0
-        stem: '滑动摩擦力的大小一定等于 $\mu mg$。'
+        stem: '下列正确的是：'
+        options: [甲, 乙, 丙, 丁]
+        answer: 1
+      - type: judge
+        points: 2.0
+        stem: '该判断为假。'
         answer: false
 ```
 
