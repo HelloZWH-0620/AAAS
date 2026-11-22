@@ -8,7 +8,7 @@
 
 AAAS（A Adaptive Assessment Schema）用于在不同出题、组卷、作答、评分软件之间交换单道题目。设计目标有三点：一道题脱离整卷后仍然完整；字段可被机器校验；评分所需信息随题目一起传递。
 
-本文面向编写题库文件的人。读者应能据此独立写出合规 YAML。文件命名、编码与 Schema 声明见 [README.md](./README.md)。
+本文面向编写题库文件的人。读者应能据此独立写出合规 YAML。文件命名、编码与 Schema 声明见 [README.md](./README.md)。规范的章节组织与 Schema 编排参照 CSES [6]。
 
 ## 2 术语与记号
 
@@ -240,6 +240,10 @@ questions:
     rubric: null
 ```
 
+## 致谢
+
+感谢 SmartTeachCN 的 CSES 规范在章节组织、Schema 拆分与文档编排上提供的参照。
+
 ## 参考文献
 
 [1] JSON Schema Draft 07. https://json-schema.org/specification-links.html#draft-7
@@ -251,3 +255,5 @@ questions:
 [4] KaTeX Documentation. https://katex.org/docs/supported.html
 
 [5] mhchem Documentation. https://mhchem.github.io/MathJax-mhchem/
+
+[6] SmartTeachCN. CSES: The Course Schedule Exchange Schema. https://github.com/SmartTeachCN/CSES

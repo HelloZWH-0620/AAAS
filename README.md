@@ -73,6 +73,10 @@ questions:
 
 命令行校验与字段说明见 [HELP.md](./HELP.md)。
 
+## 致谢
+
+规范的章节组织与 Schema 编排参考了 [CSES（The Course Schedule Exchange Schema）](https://github.com/SmartTeachCN/CSES)，由 SmartTeachCN 维护，采用 MIT 许可。
+
 ## 协议
 
 Apache License 2.0，见 [LICENSE](./LICENSE)。
